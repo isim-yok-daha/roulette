@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rulet Oyunu</title>
+  <style>
+    canvas {
+      display: block;
+      margin: 20px auto;
+      background-color: #000;
+      border-radius: 50%;
+    }
+    #spinButton {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #333;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #resultText {
+      text-align: center;
+      font-size: 18px;
+      color: black;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="rouletteCanvas" width="400" height="400"></canvas>
+  <button id="spinButton">Çarkı Çevir</button>
+  <p id="resultText">Kazanan: -</p>
+
+  <script>
+    const canvas = document.getElementById('rouletteCanvas');
+    const ctx = canvas.getContext('2d');
+    const spinButton = document.getElementById('spinButton');
+    const resultText = document.getElementById('resultText');
+
+    canvas.width = 400;
+    canvas.height = 400;
+
+    const colors = ['#FF0000', '#000000']; // Kırmızı ve siyah
+    const green = '#008000'; // Yeşil
+    const numbers = ['0', '32', '15', '19', '4', '21', '2', '25', '17', '34', '6', '27', '13', '36', '11', '30', '8', '23', '10', '5', '24', '16', '33', '1', '20', '14', '31', '9', '22', '18', '29', '7', '28', '12', '35', '3', '26'];
+
+    const sliceAngle = (2 * Math.PI) / numbers.length;
+    let currentAngle = 0;
+    let isSpinning = false;
+    let spinVelocity = 0;
+    let deceleration = 0.0005; // Yavaşlama miktarı
+
+    // Çarkı çiz
+    function drawRoulette() {
+      for (let i = 0; i < numbers.length; i++) {
+        const angle = currentAngle + i * sliceAngle;
+
+        // Yeşil alan sadece 0
+        if (i === 0) {
+          ctx.fillStyle = green;
+        } else {
+          ctx.fillStyle = colors[(i - 1) % colors.length];
+        }
+
+        // Dilim çizimi
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2, canvas.height / 2);
+        ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, angle, angle + sliceAngle);
+        ctx.closePath();
+        ctx.fill();
+
+        // Numara ekle
+        const textAngle = angle + sliceAngle / 2;
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(textAngle);
+        ctx.fillStyle = 'white';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(numbers[i], canvas.width / 3, 0);
+        ctx.restore();
+      }
+
+      // Kenar çubuklarını çiz
+      drawPins();
+      drawIndicator(); // Ok çubuğunu çiz
+    }
+
+    // Kenar çubuklarını çiz
+    function drawPins() {
+      const pinCount = numbers.length;
+      const pinRadius = canvas.width / 2 - 5;
+
+      ctx.fillStyle = 'white';
+      for (let i = 0; i < pinCount; i++) {
+        const angle = currentAngle + i * sliceAngle;
+
+        const x = canvas.width / 2 + pinRadius * Math.cos(angle);
+        const y = canvas.height / 2 + pinRadius * Math.sin(angle);
+
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+
+    // Sabit ok çubuğunu sağda çiz
+    function drawIndicator() {
+      ctx.fillStyle = 'white';
+      const indicatorX = canvas.width - 20; // Sağda
+      const indicatorY = canvas.height / 2;
+
+      ctx.save();
+      ctx.translate(indicatorX, indicatorY);
+      ctx.rotate(Math.PI / 2); // 90 derece döndür
+      ctx.beginPath();
+      ctx.moveTo(-10, -20);
+      ctx.lineTo(10, -20);
+      ctx.lineTo(0, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Çark animasyonu
+    function animateRoulette() {
+      if (spinVelocity > 0) {
+        currentAngle += spinVelocity;
+
+        // Çubuğa çarptığında hızı düşür
+        if (currentAngle % sliceAngle < 0.05) {
+          spinVelocity -= 0.005; // Çubukla çarpma durumunda ani yavaşlama
+        }
+
+        spinVelocity -= deceleration; // Genel yavaşlama
+      } else {
+        isSpinning = false;
+        spinVelocity = 0;
+
+        // Okun gösterdiği sayıyı bulmak için sabit açı kullanılır
+        const normalizedAngle = currentAngle % (2 * Math.PI); // Açıyı normalize et
+        const winningIndex = Math.floor((numbers.length - Math.floor(normalizedAngle / sliceAngle)) % numbers.length);
+        console.log(winningIndex);
+        // Kazananı belirle
+        const winner = numbers[winningIndex-1];
+
+        // Sonucu yazdır
+        resultText.textContent = `Kazanan: ${winner}`;
+        return; // Animasyonu sonlandır
+      }
+
+      // Çizim alanını temizle ve tekrar çiz
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawRoulette();
+      drawIndicator(); // Sabit ok çubuğunu çiz
+      requestAnimationFrame(animateRoulette); // Animasyonu devam ettir
+    }
+
+    // Çarkı başlat
+    function spinRoulette() {
+      if (isSpinning) return;
+
+      isSpinning = true;
+      resultText.textContent = 'Kazanan: -'; // Sonucu temizle
+
+      spinVelocity = Math.random() * 0.2 + 0.3; // Başlangıç hızı
+      animateRoulette();
+    }
+
+    drawRoulette();
+    drawIndicator(); // Sabit ok çubuğunu başta çiz
+    spinButton.addEventListener('click', spinRoulette);
+  </script>
+</body>
+</html>
